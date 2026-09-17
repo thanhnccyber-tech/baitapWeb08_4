@@ -7,10 +7,6 @@
     <title>Quản lý Product - AJAX</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
-    <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
-    <script>
-        var contextPath = "${pageContext.request.contextPath}";
-    </script>
 </head>
 <body>
 <div class="container mt-4">
@@ -42,7 +38,7 @@
     </table>
 </div>
 
-<!-- ===== MODAL ADD ===== -->
+<!-- MODAL ADD -->
 <div class="modal fade" id="createProductModal" tabindex="-1">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
@@ -59,7 +55,7 @@
                         </div>
                         <div class="col-md-6 mb-3">
                             <label>Image</label>
-                            <input type="file" class="form-control" name="imageFile">
+                            <input type="file" class="form-control" name="imageFile" accept="image/*">
                         </div>
                         <div class="col-md-4 mb-3">
                             <label>Unit Price</label>
@@ -99,7 +95,7 @@
     </div>
 </div>
 
-<!-- ===== MODAL UPDATE ===== -->
+<!-- MODAL UPDATE -->
 <div class="modal fade" id="updateProductModal" tabindex="-1">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
@@ -117,7 +113,7 @@
                         </div>
                         <div class="col-md-6 mb-3">
                             <label>Image (để trống nếu không đổi)</label>
-                            <input type="file" class="form-control" name="imageFile">
+                            <input type="file" class="form-control" name="imageFile" accept="image/*">
                         </div>
                         <div class="col-md-4 mb-3">
                             <label>Unit Price</label>
@@ -157,63 +153,91 @@
     </div>
 </div>
 
+<!-- ===== SCRIPTS ĐẶT CUỐI BODY ===== -->
+<script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js"></script>
 <script type="text/javascript">
-    /* ========== LOAD CATEGORY OPTIONS ========== */
-    var categoryOptions = [];
+    var contextPath = "${pageContext.request.contextPath}";
 
-    function loadCategoryOptions(callback) {
-        $.getJSON(contextPath + '/api/category', function (json) {
-            categoryOptions = json;
-            var html = '';
-            for (var i = 0; i < json.length; i++) {
-                html += '<option value="' + json[i].categoryId + '">' + json[i].categoryName + '</option>';
-            }
-            $('#categorySelectAdd').html(html);
-            if (callback) callback();
-        });
-    }
-
-    /* ========== LOAD LIST PRODUCT ========== */
     $(document).ready(function () {
-        loadCategoryOptions();
-        loadProducts();
+        loadCategoryOptions(function() {
+            loadProducts();
+        });
     });
 
-    function loadProducts() {
-        $.getJSON(contextPath + '/api/product', function (res) {
-            var json = res.data || [];
-            var tr = [];
-            for (var i = 0; i < json.length; i++) {
-                var p = json[i];
-                var catName = (p.category && p.category.categoryName) ? p.category.categoryName : '';
-                tr.push('<tr>');
-                tr.push('<td>' + p.productId + '</td>');
-                tr.push('<td><img src="' + contextPath + '/uploads/' + p.images +
-                        '" style="width:60px" class="img-fluid"></td>');
-                tr.push('<td>' + p.productName + '</td>');
-                tr.push('<td>' + p.unitPrice + '</td>');
-                tr.push('<td>' + (p.discount || 0) + '</td>');
-                tr.push('<td>' + p.quantity + '</td>');
-                tr.push('<td>' + catName + '</td>');
-                tr.push('<td>' +
-                    '<a href="#" data-id="' + p.productId + '" class="btn btn-outline-warning btn-edit-prod">' +
-                    '<i class="fa fa-edit"></i></a> ' +
-                    '<a href="#" data-id="' + p.productId + '" class="btn btn-outline-danger btn-del-prod">' +
-                    '<i class="fa fa-trash"></i></a>' +
-                    '</td>');
-                tr.push('</tr>');
+    window.addEventListener('pageshow', function (event) {
+        if (event.persisted) {
+            loadCategoryOptions(function() {
+                loadProducts();
+            });
+        }
+    });
+
+    function loadCategoryOptions(callback) {
+        $.ajax({
+            url: contextPath + '/api/category',
+            type: 'GET',
+            dataType: 'json',
+            cache: false,
+            success: function (json) {
+                var html = '';
+                for (var i = 0; i < json.length; i++) {
+                    html += '<option value="' + json[i].categoryId + '">' + json[i].categoryName + '</option>';
+                }
+                $('#categorySelectAdd').html(html);
+                $('#categorySelectUpdate').html(html);
+                if (callback) callback();
+            },
+            error: function (xhr, status, err) {
+                console.error('Load categories failed:', status, err);
             }
-            $('#productTable tbody').html(tr.join(''));
         });
     }
 
-    /* ========== ADD PRODUCT ========== */
+    function loadProducts() {
+        $.ajax({
+            url: contextPath + '/api/product',
+            type: 'GET',
+            dataType: 'json',
+            cache: false,
+            success: function (res) {
+                var json = res.data || [];
+                var tr = [];
+                for (var i = 0; i < json.length; i++) {
+                    var p = json[i];
+                    var catName = (p.category && p.category.categoryName) ? p.category.categoryName : '';
+                    tr.push('<tr>');
+                    tr.push('<td>' + p.productId + '</td>');
+                    tr.push('<td><img src="' + contextPath + '/uploads/' + p.images +
+                            '" style="width:60px" class="img-fluid"></td>');
+                    tr.push('<td>' + p.productName + '</td>');
+                    tr.push('<td>' + p.unitPrice + '</td>');
+                    tr.push('<td>' + (p.discount || 0) + '</td>');
+                    tr.push('<td>' + p.quantity + '</td>');
+                    tr.push('<td>' + catName + '</td>');
+                    tr.push('<td>' +
+                        '<a href="#" data-id="' + p.productId + '" class="btn btn-outline-warning btn-edit-prod">' +
+                        '<i class="fa fa-edit"></i></a> ' +
+                        '<a href="#" data-id="' + p.productId + '" class="btn btn-outline-danger btn-del-prod">' +
+                        '<i class="fa fa-trash"></i></a>' +
+                        '</td>');
+                    tr.push('</tr>');
+                }
+                $('#productTable tbody').html(tr.join(''));
+            },
+            error: function (xhr, status, err) {
+                console.error('Load products failed:', status, err);
+            }
+        });
+    }
+
     function showCreateNewProductModal() {
         $('#addProduct')[0].reset();
         loadCategoryOptions();
         $('#createProductModal').modal('show');
     }
 
+    /* ADD */
     $("#addProduct").submit(function (e) {
         e.preventDefault();
         var formData = new FormData(this);
@@ -229,15 +253,18 @@
                 if (data.success) {
                     alert(data.message);
                     $('#createProductModal').modal('hide');
-                    location.reload();
+                    loadProducts();
                 } else {
                     alert(data.message);
                 }
+            },
+            error: function () {
+                alert('Có lỗi khi thêm product');
             }
         });
     });
 
-    /* ========== SHOW UPDATE ========== */
+    /* SHOW UPDATE */
     $(document).on('click', '.btn-edit-prod', function (e) {
         e.preventDefault();
         var id = $(this).data('id');
@@ -246,6 +273,7 @@
             type: 'POST',
             data: { id: id },
             dataType: 'json',
+            cache: false,
             success: function (res) {
                 if (res.success) {
                     var p = res.data;
@@ -269,7 +297,7 @@
         });
     });
 
-    /* ========== UPDATE PRODUCT ========== */
+    /* UPDATE */
     $("#updateProduct").submit(function (e) {
         e.preventDefault();
         var formData = new FormData(this);
@@ -285,7 +313,7 @@
                 if (data.success) {
                     alert(data.message);
                     $('#updateProductModal').modal('hide');
-                    location.reload();
+                    loadProducts();
                 } else {
                     alert(data.message);
                 }
@@ -293,7 +321,7 @@
         });
     });
 
-    /* ========== DELETE PRODUCT ========== */
+    /* DELETE */
     $(document).on('click', '.btn-del-prod', function (e) {
         e.preventDefault();
         var id = $(this).data('id');
@@ -302,16 +330,15 @@
                 type: 'DELETE',
                 url: contextPath + '/api/product/deleteProduct?productId=' + id,
                 dataType: 'json',
+                cache: false,
                 success: function (data) {
                     alert(data.message);
-                    location.reload();
+                    loadProducts();
                 },
                 error: function () { alert('Xóa thất bại'); }
             });
         }
     });
 </script>
-
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

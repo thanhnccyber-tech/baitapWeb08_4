@@ -7,10 +7,6 @@
     <title>Quản lý Category - AJAX</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
-    <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
-    <script>
-        var contextPath = "${pageContext.request.contextPath}";
-    </script>
 </head>
 <body>
 <div class="container mt-4">
@@ -38,7 +34,7 @@
     </table>
 </div>
 
-<!-- ===== MODAL ADD ===== -->
+<!-- MODAL ADD -->
 <div class="modal fade" id="createCategoryModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -54,7 +50,7 @@
                     </div>
                     <div class="form-group mb-3">
                         <label>Icon</label>
-                        <input type="file" class="form-control" id="new_icon" name="icon">
+                        <input type="file" class="form-control" id="new_icon" name="icon" accept="image/*">
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -66,7 +62,7 @@
     </div>
 </div>
 
-<!-- ===== MODAL UPDATE ===== -->
+<!-- MODAL UPDATE -->
 <div class="modal fade" id="updateCategoryInfoModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -86,7 +82,7 @@
                     </div>
                     <div class="form-group mb-3">
                         <label>Icon mới (để trống nếu không đổi)</label>
-                        <input type="file" class="form-control" id="icon_up" name="icon">
+                        <input type="file" class="form-control" id="icon_up" name="icon" accept="image/*">
                     </div>
                     <input type="hidden" id="categoryId_up" name="categoryId">
                     <div class="text-center">
@@ -101,36 +97,56 @@
     </div>
 </div>
 
+<!-- ===== SCRIPTS ĐẶT CUỐI BODY ===== -->
+<script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js"></script>
 <script type="text/javascript">
-    /* ============ LOAD LIST CATEGORY ============ */
+    var contextPath = "${pageContext.request.contextPath}";
+
     $(document).ready(function () {
         loadCategories();
     });
 
+    // Xử lý back/forward
+    window.addEventListener('pageshow', function (event) {
+        if (event.persisted) {
+            loadCategories();
+        }
+    });
+
     function loadCategories() {
-        $.getJSON(contextPath + '/api/category', function (json) {
-            var tr = [];
-            for (var i = 0; i < json.length; i++) {
-                tr.push('<tr>');
-                tr.push('<td>' + json[i].categoryId + '</td>');
-                tr.push('<td><img src="' + contextPath + '/uploads/' + json[i].icon +
-                        '" style="width:70px" class="img-fluid" alt=""></td>');
-                tr.push('<td>' + json[i].categoryName + '</td>');
-                tr.push('<td>' +
-                    '<a href="#" data-id="' + json[i].categoryId +
-                    '" class="btn btn-outline-warning btn-edit-cat">' +
-                    '<i class="fa fa-edit"></i></a> ' +
-                    '<a href="#" data-id="' + json[i].categoryId +
-                    '" class="btn btn-outline-danger btn-del-cat">' +
-                    '<i class="fa fa-trash"></i></a>' +
-                    '</td>');
-                tr.push('</tr>');
+        $.ajax({
+            url: contextPath + '/api/category',
+            type: 'GET',
+            dataType: 'json',
+            cache: false,
+            success: function (json) {
+                var tr = [];
+                for (var i = 0; i < json.length; i++) {
+                    tr.push('<tr>');
+                    tr.push('<td>' + json[i].categoryId + '</td>');
+                    tr.push('<td><img src="' + contextPath + '/uploads/' + json[i].icon +
+                            '" style="width:70px" class="img-fluid" alt=""></td>');
+                    tr.push('<td>' + json[i].categoryName + '</td>');
+                    tr.push('<td>' +
+                        '<a href="#" data-id="' + json[i].categoryId +
+                        '" class="btn btn-outline-warning btn-edit-cat">' +
+                        '<i class="fa fa-edit"></i></a> ' +
+                        '<a href="#" data-id="' + json[i].categoryId +
+                        '" class="btn btn-outline-danger btn-del-cat">' +
+                        '<i class="fa fa-trash"></i></a>' +
+                        '</td>');
+                    tr.push('</tr>');
+                }
+                $('#categoryTable tbody').html(tr.join(''));
+            },
+            error: function (xhr, status, err) {
+                console.error('Load categories failed:', status, err);
             }
-            $('#categoryTable tbody').html(tr.join(''));
         });
     }
 
-    /* ============ ADD CATEGORY ============ */
+    /* ADD */
     $("#addCategory").submit(function (e) {
         e.preventDefault();
         var formData = new FormData(this);
@@ -139,18 +155,21 @@
             type: 'POST',
             dataType: 'json',
             data: formData,
+            cache: false,
+            contentType: false,
+            processData: false,
             success: function (data) {
                 if (data.success) {
                     alert(data.message);
                     $('#createCategoryModal').modal('hide');
-                    location.reload();
+                    loadCategories();   // ← Load lại data KHÔNG cần reload trang
                 } else {
                     alert(data.message);
                 }
             },
-            cache: false,
-            contentType: false,
-            processData: false
+            error: function () {
+                alert('Có lỗi xảy ra khi thêm');
+            }
         });
     });
 
@@ -160,7 +179,7 @@
         $('#createCategoryModal').modal('show');
     }
 
-    /* ============ SHOW UPDATE MODAL ============ */
+    /* SHOW UPDATE */
     $(document).on('click', '.btn-edit-cat', function (e) {
         e.preventDefault();
         var id = $(this).data('id');
@@ -169,6 +188,7 @@
             type: 'POST',
             data: { id: id },
             dataType: 'json',
+            cache: false,
             success: function (res) {
                 if (res.success) {
                     var c = res.data;
@@ -185,7 +205,7 @@
         });
     });
 
-    /* ============ UPDATE CATEGORY ============ */
+    /* UPDATE */
     $("#updateCategory").submit(function (e) {
         e.preventDefault();
         var formData = new FormData(this);
@@ -194,22 +214,22 @@
             type: 'PUT',
             dataType: 'json',
             data: formData,
+            cache: false,
+            contentType: false,
+            processData: false,
             success: function (data) {
                 if (data.success) {
                     alert(data.message);
                     $('#updateCategoryInfoModal').modal('hide');
-                    location.reload();
+                    loadCategories();   // ← Load lại data KHÔNG cần reload trang
                 } else {
                     alert(data.message);
                 }
-            },
-            cache: false,
-            contentType: false,
-            processData: false
+            }
         });
     });
 
-    /* ============ DELETE CATEGORY ============ */
+    /* DELETE */
     $(document).on('click', '.btn-del-cat', function (e) {
         e.preventDefault();
         var id = $(this).data('id');
@@ -218,9 +238,10 @@
                 type: 'DELETE',
                 url: contextPath + '/api/category/deleteCategory?categoryId=' + id,
                 dataType: 'json',
+                cache: false,
                 success: function (data) {
                     alert(data.message);
-                    location.reload();
+                    loadCategories();   // ← Load lại data KHÔNG cần reload trang
                 },
                 error: function () {
                     alert('Xóa thất bại');
@@ -229,7 +250,5 @@
         }
     });
 </script>
-
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

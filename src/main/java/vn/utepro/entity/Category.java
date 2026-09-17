@@ -1,5 +1,6 @@
 package vn.utepro.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import java.io.Serializable;
 import java.util.List;
@@ -21,6 +22,7 @@ public class Category implements Serializable {
     private String icon;
 
     @OneToMany(mappedBy = "category", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @JsonIgnore
     private List<Product> products;
 
     public Category() {}
